@@ -59,6 +59,59 @@ src/main/java/edu/eci/arsw/blueprints
 - Implementa un nuevo repositorio `PostgresBlueprintPersistence` que reemplace la versión en memoria.  
 - Mantén el contrato de la interfaz `BlueprintPersistence`.  
 
+#### Cambios realizados:
+
+
+**Configuración de base de datos (application.yml):**
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/blueprints_db
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update  # Crea/actualiza tablas automáticamente
+    show-sql: true      # Muestra consultas SQL en consola
+```
+
+**Entidades modificadas para JPA:**
+- **Point**: Convertida de record a clase con anotaciones `@Entity`, `@Id`
+- **Blueprint**: Agregadas anotaciones `@Entity`, `@Table`, `@OneToMany`
+- Relación bidireccional entre Blueprint y Point
+
+**4. Nuevo repositorio PostgreSQL:**
+- `PostgresBlueprintPersistence` con `@Primary`
+- Usa `EntityManager` y JPQL para consultas
+- `@Transactional` en métodos de escritura
+
+**5. Manejo de transacciones:**
+- Agregada anotación `@Transactional` a `saveBlueprint()` y `addPoint()`
+- Soluciona error de persistencia en JPA
+
+#### 🚀 Cómo ejecutar:
+
+**Levantar PostgreSQL:**
+```bash
+docker run --name postgres-blueprints -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=blueprints_db -p 5432:5432 -d postgres:15
+```
+En caso de ya tenerlo, para iniciarlo:
+```bash
+docker start postgres-blueprints
+```
+
+**Ejecutar aplicación:**
+```bash
+mvn clean install
+mvn spring-boot:run
+```
+
+**Probar funcionamiento:**
+1. Crear plano via Swagger UI: http://localhost:8080/swagger-ui.html
+2. Verificar persistencia: detener y reiniciar aplicación
+3. Los datos deben permanecer en PostgreSQL
+
+
 ### 3. Buenas prácticas de API REST
 - Cambia el path base de los controladores a `/api/v1/blueprints`.  
 - Usa **códigos HTTP** correctos:  
