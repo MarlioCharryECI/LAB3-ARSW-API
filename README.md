@@ -111,7 +111,9 @@ mvn spring-boot:run
 2. Verificar persistencia: detener y reiniciar aplicación
 3. Los datos deben permanecer en PostgreSQL
 
-
+![img.png](img/SwaggerBasico.png)
+![img.png](img/PruebaPuntos.png)
+![img.png](img/CompruebaPuntos.png)
 ### 3. Buenas prácticas de API REST
 - Cambia el path base de los controladores a `/api/v1/blueprints`.  
 - Usa **códigos HTTP** correctos:  
@@ -132,6 +134,12 @@ mvn spring-boot:run
     "data": { "author": "john", "name": "house", "points": [...] }
   }
   ```
+
+Se transformaron los endpoints para que sigan un formato estándar con versionamiento de API y 
+respuestas uniformes mediante una clase genérica ApiResponseDTO que encapsula el código de estado HTTP, un mensaje 
+descriptivo y los datos de respuesta. Además, actualizamos todos los códigos HTTP para que sean los adecuados.
+Los endpoints ahora están versionados bajo /api/v1/blueprints lo que permite futuras evoluciones de la API sin romper 
+compatibilidad, y toda la documentación Swagger fue actualizada para reflejar estos cambios con ejemplos concretos de uso.
 
 ### 4. OpenAPI / Swagger
 - Configura `springdoc-openapi` en el proyecto.  
