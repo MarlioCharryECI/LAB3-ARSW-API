@@ -3,6 +3,7 @@ package edu.eci.arsw.blueprints.model;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Objects;
 
 @Entity
 @Schema(description = "Representa un punto en el plano 2D")
@@ -34,4 +35,16 @@ public class Point {
     public void setX(int x) { this.x = x; }
     public void setY(int y) { this.y = y; }
     public void setBlueprint(Blueprint blueprint) { this.blueprint = blueprint; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Point point)) return false;
+        return x == point.x && y == point.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
 }

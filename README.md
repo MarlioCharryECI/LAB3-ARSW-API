@@ -146,12 +146,40 @@ compatibilidad, y toda la documentación Swagger fue actualizada para reflejar e
 - Expón documentación automática en `/swagger-ui.html`.  
 - Anota endpoints con `@Operation` y `@ApiResponse`.
 
-### 5. Filtros de *Blueprints*
+### 5. Filtros de *Blueprints* ✅
 - Implementa filtros:
   - **RedundancyFilter**: elimina puntos duplicados consecutivos.  
-  - **UndersamplingFilter**: conserva 1 de cada 2 puntos.  
-- Activa los filtros mediante perfiles de Spring (`redundancy`, `undersampling`).  
+- **UndersamplingFilter**: conserva 1 de cada 2 puntos.  
+- **Activación mediante perfiles de Spring**:
+  - Perfil `redundancy`: activa RedundancyFilter
+  - Perfil `undersampling`: activa UndersamplingFilter
+  - Sin perfil: usa IdentityFilter (sin filtrado)
 
+#### 🚀 Cómo activar los filtros:
+
+**Para activar RedundancyFilter:**
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=redundancy
+```
+
+**Para activar UndersamplingFilter:**
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=undersampling
+```
+
+**Ejecución normal (sin filtrado):**
+```bash
+mvn spring-boot:run
+```
+
+#### Implementación técnica:
+- Los filtros implementan la interfaz `BlueprintsFilter`
+- Cada filtro está anotado con `@Component` y `@Profile`
+- `BlueprintsServices` inyecta el filtro correspondiente según el perfil activo
+- El filtro se aplica automáticamente al obtener un blueprint individual (`getBlueprint()`)
+ 
+
+![img.png](img/PruebaMuchosPuntos.png)
 ---
 
 ## ✅ Entregables

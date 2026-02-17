@@ -19,7 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -108,7 +107,10 @@ public class BlueprintsAPIController {
     })
     public ResponseEntity<ApiResponseDTO<Blueprint>> add(@Valid @RequestBody NewBlueprintRequest req) {
         try {
-            Blueprint bp = new Blueprint(req.author(), req.name(), req.points());
+            Blueprint bp = new Blueprint(req.author(), req.name(), null);
+            for (Point point : req.points()) {
+                bp.addPoint(new Point(point.getX(), point.getY()));
+            }
             services.addNewBlueprint(bp);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseDTO.success(201, "Plano creado exitosamente", bp));
