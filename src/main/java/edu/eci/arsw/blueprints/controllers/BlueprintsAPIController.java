@@ -1,6 +1,7 @@
 package edu.eci.arsw.blueprints.controllers;
 
 import edu.eci.arsw.blueprints.dto.ApiResponseDTO;
+import edu.eci.arsw.blueprints.dto.AuthorBlueprintsDTO;
 import edu.eci.arsw.blueprints.model.Blueprint;
 import edu.eci.arsw.blueprints.model.Point;
 import edu.eci.arsw.blueprints.persistence.BlueprintNotFoundException;
@@ -45,7 +46,7 @@ public class BlueprintsAPIController {
 
     // GET /api/v1/blueprints/{author}
     @GetMapping("/{author}")
-    @Operation(summary = "Obtener planos por autor", description = "Retorna todos los planos creados por un autor específico")
+    @Operation(summary = "Obtener planos por autor", description = "Retorna todos los planos creados por un autor específico con el total de puntos")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Planos del autor encontrados",
                 content = @Content(mediaType = "application/json",
@@ -54,12 +55,17 @@ public class BlueprintsAPIController {
                 content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ApiResponseDTO.class)))
     })
-    public ResponseEntity<ApiResponseDTO<Set<Blueprint>>> byAuthor(
+    public ResponseEntity<ApiResponseDTO<AuthorBlueprintsDTO>> byAuthor(
             @Parameter(description = "Nombre del autor", required = true) 
             @PathVariable String author) {
         try {
             Set<Blueprint> blueprints = services.getBlueprintsByAuthor(author);
-            return ResponseEntity.ok(ApiResponseDTO.success("Planos del autor encontrados", blueprints));
+            int totalPoints = blueprints.stream()
+                    .mapToInt(bp -> bp.getPoints().size())
+                    .sum();
+            AuthorBlueprintsDTO response = new AuthorBlueprintsDTO(
+                    java.util.List.copyOf(blueprints), totalPoints);
+            return ResponseEntity.ok(ApiResponseDTO.success("Planos del autor encontrados", response));
         } catch (BlueprintNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponseDTO.notFound(e.getMessage()));
@@ -107,10 +113,7 @@ public class BlueprintsAPIController {
     })
     public ResponseEntity<ApiResponseDTO<Blueprint>> add(@Valid @RequestBody NewBlueprintRequest req) {
         try {
-            Blueprint bp = new Blueprint(req.author(), req.name(), null);
-            for (Point point : req.points()) {
-                bp.addPoint(new Point(point.getX(), point.getY()));
-            }
+            Blueprint bp = new Blueprint(req.author(), req.name(), req.points());
             services.addNewBlueprint(bp);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseDTO.success(201, "Plano creado exitosamente", bp));
@@ -145,6 +148,67 @@ public class BlueprintsAPIController {
             services.addPoint(author, bpname, p.getX(), p.getY());
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(ApiResponseDTO.success(202, "Punto agregado exitosamente", "Punto añadido al plano"));
+        } catch (BlueprintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponseDTO.notFound(e.getMessage()));
+        }
+    }
+
+    // PUT /api/v1/blueprints/{author}/{bpname}
+    @PutMapping("/{author}/{bpname}")
+    @Operation(summary = "Actualizar plano", description = "Actualiza completamente un plano existente")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Plano actualizado exitosamente",
+                content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Plano no encontrado",
+                content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos",
+                content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Conflicto al actualizar plano",
+                content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponseDTO.class)))
+    })
+    public ResponseEntity<ApiResponseDTO<Blueprint>> update(
+            @Parameter(description = "Nombre del autor", required = true) 
+            @PathVariable String author, 
+            @Parameter(description = "Nombre del plano", required = true) 
+            @PathVariable String bpname,
+            @Valid @RequestBody NewBlueprintRequest req) {
+        try {
+            Blueprint updatedBlueprint = new Blueprint(req.author(), req.name(), req.points());
+            services.updateBlueprint(author, bpname, updatedBlueprint);
+            return ResponseEntity.ok(ApiResponseDTO.success("Plano actualizado exitosamente", updatedBlueprint));
+        } catch (BlueprintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponseDTO.notFound(e.getMessage()));
+        } catch (BlueprintPersistenceException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponseDTO.forbidden(e.getMessage()));
+        }
+    }
+
+    // DELETE /api/v1/blueprints/{author}/{bpname}
+    @DeleteMapping("/{author}/{bpname}")
+    @Operation(summary = "Eliminar plano", description = "Elimina un plano existente")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Plano eliminado exitosamente",
+                content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Plano no encontrado",
+                content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponseDTO.class)))
+    })
+    public ResponseEntity<ApiResponseDTO<String>> delete(
+            @Parameter(description = "Nombre del autor", required = true) 
+            @PathVariable String author, 
+            @Parameter(description = "Nombre del plano", required = true) 
+            @PathVariable String bpname) {
+        try {
+            services.deleteBlueprint(author, bpname);
+            return ResponseEntity.ok(ApiResponseDTO.success("Plano eliminado exitosamente", "Plano " + author + "/" + bpname + " eliminado"));
         } catch (BlueprintNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponseDTO.notFound(e.getMessage()));

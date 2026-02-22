@@ -94,4 +94,52 @@ public class PostgresBlueprintPersistence implements BlueprintPersistence {
             throw new BlueprintNotFoundException("Error adding point: " + e.getMessage());
         }
     }
+
+    @Override
+    @Transactional
+    public void updateBlueprint(String author, String name, Blueprint blueprint) throws BlueprintNotFoundException, BlueprintPersistenceException {
+        try {
+            Blueprint existing = getBlueprint(author, name);
+            
+            if (!blueprint.getAuthor().equals(author) || !blueprint.getName().equals(name)) {
+                TypedQuery<Blueprint> query = entityManager.createQuery(
+                    "SELECT b FROM Blueprint b WHERE b.author = :author AND b.name = :name", Blueprint.class);
+                query.setParameter("author", blueprint.getAuthor());
+                query.setParameter("name", blueprint.getName());
+                
+                try {
+                    Blueprint duplicate = query.getSingleResult();
+                    throw new BlueprintPersistenceException("Blueprint with new author/name already exists: " + blueprint.getAuthor() + "/" + blueprint.getName());
+                } catch (NoResultException e) {
+                    // No duplicate found, proceed with update
+                }
+            }
+            
+            existing.setAuthor(blueprint.getAuthor());
+            existing.setName(blueprint.getName());
+            existing.getPoints().clear();
+            for (Point point : blueprint.getPoints()) {
+                existing.addPoint(new Point(point.getX(), point.getY()));
+            }
+            
+            entityManager.merge(existing);
+        } catch (BlueprintNotFoundException | BlueprintPersistenceException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BlueprintPersistenceException("Error updating blueprint: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteBlueprint(String author, String name) throws BlueprintNotFoundException {
+        try {
+            Blueprint bp = getBlueprint(author, name);
+            entityManager.remove(bp);
+        } catch (BlueprintNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BlueprintNotFoundException("Error deleting blueprint: " + e.getMessage());
+        }
+    }
 }
