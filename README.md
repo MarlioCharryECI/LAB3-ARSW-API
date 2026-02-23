@@ -14,11 +14,11 @@ mvn spring-boot:run
 ```
 Probar con `curl`:
 ```bash
-curl -s http://localhost:8080/blueprints | jq
-curl -s http://localhost:8080/blueprints/john | jq
-curl -s http://localhost:8080/blueprints/john/house | jq
-curl -i -X POST http://localhost:8080/blueprints -H 'Content-Type: application/json' -d '{ "author":"john","name":"kitchen","points":[{"x":1,"y":1},{"x":2,"y":2}] }'
-curl -i -X PUT  http://localhost:8080/blueprints/john/kitchen/points -H 'Content-Type: application/json' -d '{ "x":3,"y":3 }'
+curl -s http://localhost:8080/api/v1/blueprints | jq
+curl -s http://localhost:8080/api/v1/blueprints/john | jq
+curl -s http://localhost:8080/api/v1/blueprints/john/house | jq
+curl -i -X POST http://localhost:8080/api/v1/blueprints -H 'Content-Type: application/json' -d '{ "author":"john","name":"kitchen","points":[{"x":1,"y":1},{"x":2,"y":2}] }'
+curl -i -X PUT  http://localhost:8080/api/v1/blueprints/john/kitchen/points -H 'Content-Type: application/json' -d '{ "x":3,"y":3 }'
 ```
 
 > Si deseas activar filtros de puntos (reducción de redundancia, *undersampling*, etc.), implementa nuevas clases que implementen `BlueprintsFilter` y cámbialas por `IdentityFilter` con `@Primary` o usando configuración de Spring.
@@ -76,7 +76,7 @@ spring:
 ```
 
 **Entidades modificadas para JPA:**
-- **Point**: Convertida de record a clase con anotaciones `@Entity`, `@Id`
+- **Point**: Clase con anotaciones `@Entity`, `@Id` auto-generado, y relación `@ManyToOne`
 - **Blueprint**: Agregadas anotaciones `@Entity`, `@Table`, `@OneToMany`
 - Relación bidireccional entre Blueprint y Point
 
@@ -87,7 +87,8 @@ spring:
 
 **5. Manejo de transacciones:**
 - Agregada anotación `@Transactional` a `saveBlueprint()` y `addPoint()`
-- Soluciona error de persistencia en JPA
+- Soluciona error de persistencia en JPA y conflictos de transacciones anidadas
+- Método `replacePoints()` optimizado para evitar `UnexpectedRollbackException`
 
 #### 🚀 Cómo ejecutar:
 
@@ -124,7 +125,7 @@ mvn spring-boot:run
   - `404 Not Found` (recurso inexistente).  
 - Implementa una clase genérica de respuesta uniforme:
   ```java
-  public record ApiResponse<T>(int code, String message, T data) {}
+  public record ApiResponseDTO<T>(int code, String message, T data) {}
   ```
   Ejemplo JSON:
   ```json
@@ -188,7 +189,7 @@ mvn spring-boot:run
    - Código fuente actualizado.  
    - Configuración PostgreSQL (`application.yml` o script SQL).  
    - Swagger/OpenAPI habilitado.  
-   - Clase `ApiResponse<T>` implementada.  
+   - Clase `ApiResponseDTO<T>` implementada.  
 
 2. Documentación:  
    - Informe de laboratorio con instrucciones claras.  
@@ -210,4 +211,116 @@ mvn spring-boot:run
 **Bonus**:  
 
 - Imagen de contenedor (`spring-boot:build-image`).  
-- Métricas con Actuator.  
+- Métricas con Actuator.
+
+---
+
+## 🎯 Implementación Laboratorio #4
+
+### 📋 Resumen de Implementación
+
+Este laboratorio implementa una API REST completa para gestión de planos arquitectónicos con las siguientes características:
+
+#### **Backend (Spring Boot API)**
+- **API RESTful** con endpoints versionados bajo `/api/v1/blueprints`
+- **Persistencia en PostgreSQL** con JPA/Hibernate
+- **Respuestas estandarizadas** usando `ApiResponseDTO<T>`
+- **Documentación automática** con Swagger/OpenAPI
+- **Manejo de errores** con códigos HTTP apropiados
+- **Filtros de procesamiento** para puntos (Redundancy, Undersampling)
+- **Transacciones robustas** con manejo de conflictos
+
+#### **Frontend (React - localhost:5173)**
+- **Cliente React** que consume la API REST
+- **Interfaz intuitiva** para visualizar y gestionar planos
+- **Comunicación CORS** configurada para desarrollo local
+- **Visualización de puntos** en plano 2D
+- **CRUD completo** de planos y puntos
+
+#### **Base de Datos PostgreSQL**
+- **Modelo relacional** con entidades `Blueprint` y `Point`
+- **Relación bidireccional** Uno-a-Muchos
+- **IDs auto-generados** para evitar conflictos
+- **Cascading y orphanRemoval** para integridad referencial
+
+### 🗄️ Configuración Base de Datos
+
+#### **Opción 1: Docker (Recomendado)**
+```bash
+# Crear y levantar contenedor PostgreSQL
+docker run --name postgres-blueprints \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=blueprints_db \
+  -p 5432:5432 \
+  -d postgres:15
+
+# Verificar que está corriendo
+docker ps | grep postgres-blueprints
+
+# Si ya existe, solo iniciarlo
+docker start postgres-blueprints
+```
+
+#### **Opción 2: PostgreSQL Local**
+```bash
+# Conectar a PostgreSQL y crear base de datos
+psql -U postgres
+
+CREATE DATABASE blueprints_db;
+CREATE USER blueprints_user WITH PASSWORD 'blueprints_pass';
+GRANT ALL PRIVILEGES ON DATABASE blueprints_db TO blueprints_user;
+\q
+```
+
+#### **Verificación de Conexión**
+```bash
+# Probar conexión con la base de datos
+psql -h localhost -p 5432 -U postgres -d blueprints_db
+
+# Verificar tablas creadas (después de iniciar la API)
+\dt
+```
+
+### 🚀 Ejecución Completa del Sistema
+
+#### **1. Levantar Base de Datos**
+```bash
+docker start postgres-blueprints
+```
+
+#### **2. Iniciar Backend (Puerto 8080)**
+```bash
+cd LAB3-ARSW-API
+mvn clean install
+mvn spring-boot:run
+```
+
+#### **3. Iniciar Frontend (Puerto 5173)**
+```bash
+cd [directorio-frontend]
+npm install
+npm run dev
+```
+
+#### **4. Acceder a la Aplicación**
+- **Frontend**: http://localhost:5173
+- **API Documentation**: http://localhost:8080/swagger-ui.html
+- **API Endpoints**: http://localhost:8080/api/v1/blueprints
+
+### 🔧 Problemas Resueltos
+
+1. **Conflictos de Transacciones**: Solucionado `UnexpectedRollbackException` optimizando `replacePoints()`
+2. **Primary Key Conflicts**: Cambiado Point de coordenadas a ID auto-generado
+3. **Variable Scope**: Resuelto conflicto de nombres en consultas JPA
+4. **CORS Configuration**: Configurado para comunicación con frontend en localhost:5173
+5. **Data Initialization**: Implementado mecanismo de carga inicial de datos
+
+### 📊 Arquitectura Final
+
+```
+Frontend (React:5173) ←→ Backend (Spring Boot:8080) ←→ PostgreSQL:5432
+        ↓                           ↓                        ↓
+   UI Components              REST Controllers           Tables
+   State Management           Services Layer             Entities
+   API Calls                 Business Logic             Relations
+```  
