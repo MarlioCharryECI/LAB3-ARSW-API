@@ -113,7 +113,8 @@ public class BlueprintsAPIController {
     })
     public ResponseEntity<ApiResponseDTO<Blueprint>> add(@Valid @RequestBody NewBlueprintRequest req) {
         try {
-            Blueprint bp = new Blueprint(req.author(), req.name(), req.points());
+            Blueprint bp = new Blueprint(req.author(), req.name(), req.points);
+
             services.addNewBlueprint(bp);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponseDTO.success(201, "Plano creado exitosamente", bp));
@@ -178,9 +179,14 @@ public class BlueprintsAPIController {
             @PathVariable String bpname,
             @Valid @RequestBody NewBlueprintRequest req) {
         try {
-            Blueprint updatedBlueprint = new Blueprint(req.author(), req.name(), req.points());
-            services.updateBlueprint(author, bpname, updatedBlueprint);
-            return ResponseEntity.ok(ApiResponseDTO.success("Plano actualizado exitosamente", updatedBlueprint));
+
+            if (!author.equals(req.author()) || !bpname.equals(req.name())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponseDTO.forbidden("Path/body mismatch"));
+            }
+            Blueprint updated = services.replacePoints(author, bpname, req.points());
+            return ResponseEntity.ok(ApiResponseDTO.success("Plano actualizado exitosamente", updated));
+
         } catch (BlueprintNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponseDTO.notFound(e.getMessage()));
@@ -224,8 +230,8 @@ public class BlueprintsAPIController {
             @NotBlank(message = "El nombre del plano es obligatorio")
             @Schema(description = "Nombre del plano", example = "Edificio A")
             String name,
-            
-            @Valid
+
+            @jakarta.validation.constraints.NotNull @Valid
             @Schema(description = "Lista de puntos que conforman el plano")
             java.util.List<Point> points
     ) { }

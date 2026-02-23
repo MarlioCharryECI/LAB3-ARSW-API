@@ -2,11 +2,14 @@ package edu.eci.arsw.blueprints.services;
 
 import edu.eci.arsw.blueprints.filters.BlueprintsFilter;
 import edu.eci.arsw.blueprints.model.Blueprint;
+import edu.eci.arsw.blueprints.model.Point;
 import edu.eci.arsw.blueprints.persistence.BlueprintNotFoundException;
 import edu.eci.arsw.blueprints.persistence.BlueprintPersistence;
 import edu.eci.arsw.blueprints.persistence.BlueprintPersistenceException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -47,4 +50,13 @@ public class BlueprintsServices {
     public void deleteBlueprint(String author, String name) throws BlueprintNotFoundException {
         persistence.deleteBlueprint(author, name);
     }
+
+    @Transactional
+    public Blueprint replacePoints(String author, String name, List<Point> points)
+            throws BlueprintNotFoundException, BlueprintPersistenceException {
+        Blueprint bp = persistence.getBlueprint(author, name);
+        bp.replacePoints(points);
+        return filter.apply(bp);
+    }
+
 }

@@ -32,6 +32,7 @@ public class PostgresBlueprintPersistence implements BlueprintPersistence {
         }
     }
 
+    @Transactional
     @Override
     public Blueprint getBlueprint(String author, String name) throws BlueprintNotFoundException {
         try {
@@ -99,33 +100,52 @@ public class PostgresBlueprintPersistence implements BlueprintPersistence {
     @Transactional
     public void updateBlueprint(String author, String name, Blueprint blueprint) throws BlueprintNotFoundException, BlueprintPersistenceException {
         try {
-            Blueprint existing = getBlueprint(author, name);
+            logger.info("Updating blueprint: " + author + "/" + name + " -> " + blueprint.getAuthor() + "/" + blueprint.getName());
+            
+            // Usar consulta directa para evitar conflictos de sesión
+            TypedQuery<Blueprint> query = entityManager.createQuery(
+                "SELECT b FROM Blueprint b LEFT JOIN FETCH b.points WHERE b.author = :author AND b.name = :name", Blueprint.class);
+            query.setParameter("author", author);
+            query.setParameter("name", name);
+            
+            Blueprint existing;
+            try {
+                existing = query.getSingleResult();
+            } catch (NoResultException e) {
+                throw new BlueprintNotFoundException("Blueprint not found: " + author + "/" + name);
+            }
             
             if (!blueprint.getAuthor().equals(author) || !blueprint.getName().equals(name)) {
-                TypedQuery<Blueprint> query = entityManager.createQuery(
+                logger.info("Checking for duplicate: " + blueprint.getAuthor() + "/" + blueprint.getName());
+                TypedQuery<Blueprint> duplicateQuery = entityManager.createQuery(
                     "SELECT b FROM Blueprint b WHERE b.author = :author AND b.name = :name", Blueprint.class);
-                query.setParameter("author", blueprint.getAuthor());
-                query.setParameter("name", blueprint.getName());
+                duplicateQuery.setParameter("author", blueprint.getAuthor());
+                duplicateQuery.setParameter("name", blueprint.getName());
                 
                 try {
-                    Blueprint duplicate = query.getSingleResult();
+                    Blueprint duplicate = duplicateQuery.getSingleResult();
+                    logger.warning("Duplicate found: " + duplicate.getAuthor() + "/" + duplicate.getName());
                     throw new BlueprintPersistenceException("Blueprint with new author/name already exists: " + blueprint.getAuthor() + "/" + blueprint.getName());
                 } catch (NoResultException e) {
-                    // No duplicate found, proceed with update
+                    logger.info("No duplicate found, proceeding with update");
                 }
             }
             
+            logger.info("Clearing existing points, count: " + existing.getPoints().size());
             existing.setAuthor(blueprint.getAuthor());
             existing.setName(blueprint.getName());
-            existing.getPoints().clear();
-            for (Point point : blueprint.getPoints()) {
-                existing.addPoint(new Point(point.getX(), point.getY()));
-            }
+            
+            // Usar el método replacePoints que ya maneja correctamente la limpieza
+            existing.replacePoints(blueprint.getPoints());
             
             entityManager.merge(existing);
+            logger.info("Blueprint updated successfully");
         } catch (BlueprintNotFoundException | BlueprintPersistenceException e) {
+            logger.warning("Business exception: " + e.getMessage());
             throw e;
         } catch (Exception e) {
+            logger.severe("Unexpected error in updateBlueprint: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
             throw new BlueprintPersistenceException("Error updating blueprint: " + e.getMessage());
         }
     }

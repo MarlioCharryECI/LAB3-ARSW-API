@@ -1,5 +1,6 @@
 package edu.eci.arsw.blueprints.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -10,6 +11,10 @@ import java.util.Objects;
 public class Point {
     
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "ID único del punto", example = "1")
+    private Long id;
+    
     @Schema(description = "Coordenada X del punto", example = "10")
     private int x;
     
@@ -18,6 +23,7 @@ public class Point {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blueprint_id")
+    @JsonBackReference
     @JsonIgnore
     private Blueprint blueprint;
     
@@ -28,6 +34,7 @@ public class Point {
         this.y = y;
     }
     
+    public Long getId() { return id; }
     public int getX() { return x; }
     public int getY() { return y; }
     public Blueprint getBlueprint() { return blueprint; }
@@ -40,11 +47,11 @@ public class Point {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Point point)) return false;
-        return x == point.x && y == point.y;
+        return id != null && id.equals(point.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(x, y);
+        return Objects.hash(id);
     }
 }

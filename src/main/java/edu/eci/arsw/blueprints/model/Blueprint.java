@@ -2,10 +2,8 @@ package edu.eci.arsw.blueprints.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+
+import java.util.*;
 
 @Entity
 @Table(name = "blueprints")
@@ -59,6 +57,18 @@ public class Blueprint {
         if (this == o) return true;
         if (!(o instanceof Blueprint bp)) return false;
         return Objects.equals(author, bp.author) && Objects.equals(name, bp.name);
+    }
+
+    public void replacePoints(List<Point> newPoints) {
+        // Clear all existing points - orphanRemoval will handle database cleanup
+        points.clear();
+        
+        if (newPoints != null) {
+            for (Point p : newPoints) {
+                Point np = new Point(p.getX(), p.getY());
+                this.addPoint(np);
+            }
+        }
     }
 
     @Override
